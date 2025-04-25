@@ -1,0 +1,82 @@
+import yfinance as yf
+import pandas as pd
+import plotly.graph_objects as go
+
+# Quarterly weights starting from Q2 2025
+quarterly_weights = {
+    "2025-04-01": {
+        "PERSISTENT.NS": 0.0235,
+        "TATAELXSI.NS": 0.0235,
+        "HEROMOTOCO.NS": 0.0235,
+        "MARUTI.NS": 0.0235,
+        "DRREDDY.NS": 0.0278,
+        "APOLLOHOSP.NS": 0.0278,
+        "DIVISLAB.NS": 0.0321,
+        "CIPLA.NS": 0.0321,
+        "BRITANNIA.NS": 0.0364,
+        "TATACONSUM.NS": 0.0407,
+        "BAJAJ-AUTO.NS": 0.0450,
+        "TECHM.NS": 0.0450,
+        "ULTRACEMCO.NS": 0.0493,
+        "HCLTECH.NS": 0.0535,
+        "NESTLEIND.NS": 0.0535,
+        "WIPRO.NS": 0.0578,
+        "SUNPHARMA.NS": 0.0707,
+        "ASIANPAINT.NS": 0.0750,
+        "INFY.NS": 0.0836,
+        "HINDUNILVR.NS": 0.0879,
+        "TCS.NS": 0.0879
+    }
+}
+
+start_date = "2025-04-01"
+end_date = pd.Timestamp.today().strftime("%Y-%m-%d")
+
+# Get list of tickers
+all_tickers = set()
+for weights in quarterly_weights.values():
+    all_tickers.update(weights.keys())
+
+# Download data
+data = yf.download(list(all_tickers), start=start_date, end=end_date)["Close"]
+data = data.dropna()
+
+# Normalize
+normalized = data / data.iloc[0]
+composite = pd.Series(index=normalized.index, dtype=float)
+
+# Weighting
+sorted_quarters = sorted((pd.to_datetime(k), v) for k, v in quarterly_weights.items())
+
+for i, (start, weights) in enumerate(sorted_quarters):
+    end = sorted_quarters[i + 1][0] if i + 1 < len(sorted_quarters) else normalized.index[-1]
+    mask = (normalized.index >= start) & (normalized.index <= end)
+    temp_data = normalized.loc[mask, weights.keys()]
+    composite.loc[mask] = (temp_data * pd.Series(weights)).sum(axis=1)
+
+composite = composite / composite.iloc[0] * 1000
+composite = composite.dropna()
+
+# Create OHLC data for candlestick
+ohlc = composite.resample("1D").ohlc()
+
+# Plotly candlestick
+fig = go.Figure(data=[go.Candlestick(
+    x=ohlc.index,
+    open=ohlc["open"],
+    high=ohlc["high"],
+    low=ohlc["low"],
+    close=ohlc["close"],
+    increasing_line_color='green',
+    decreasing_line_color='red'
+)])
+
+fig.update_layout(
+    title="Hafzan Composite Index (Candlestick Chart)",
+    xaxis_title="Date",
+    yaxis_title="Index Value",
+    xaxis_rangeslider_visible=False
+)
+
+# Save to HTML
+fig.write_html("index.html", include_plotlyjs='cdn')
