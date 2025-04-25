@@ -1,8 +1,8 @@
 import yfinance as yf
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
-# Your tickers and weights (same as above)
+# Your tickers and weights
 quarterly_weights = {
     "2025-04-01": {
         "PERSISTENT.NS": 0.0235,
@@ -58,13 +58,16 @@ for i, (start, weights) in enumerate(sorted_quarters):
 # Scale the index to base value 1000
 composite = composite / composite.iloc[0] * 1000
 
-# Plot using Matplotlib (Line Chart)
-plt.figure(figsize=(12, 6))
-plt.plot(composite.index, composite, label="Hafzan Composite Index", color="blue", linewidth=1.5)
-plt.title("Hafzan Composite Index", fontsize=16)
-plt.xlabel("Date")
-plt.ylabel("Index Value")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.savefig("index.html")  # Save as HTML for GitHub Pages
+# Plot using Plotly (Line Chart)
+fig = go.Figure()
+
+fig.add_trace(go.Scatter(x=composite.index, y=composite, mode='lines', name="Hafzan Composite Index"))
+
+fig.update_layout(
+    title="Hafzan Composite Index",
+    xaxis_title="Date",
+    yaxis_title="Index Value",
+    template="plotly_dark"
+)
+
+fig.write_html("index.html")  # Save as HTML for GitHub Pages
