@@ -2,7 +2,7 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 
-# Quarterly weights starting from Q2 2025
+# Your tickers and weights
 quarterly_weights = {
     "2025-04-01": {
         "PERSISTENT.NS": 0.0235,
@@ -32,7 +32,7 @@ quarterly_weights = {
 start_date = "2025-04-01"
 end_date = pd.Timestamp.today().strftime("%Y-%m-%d")
 
-# Get list of tickers
+# Get full ticker list
 all_tickers = set()
 for weights in quarterly_weights.values():
     all_tickers.update(weights.keys())
@@ -41,42 +41,33 @@ for weights in quarterly_weights.values():
 data = yf.download(list(all_tickers), start=start_date, end=end_date)["Close"]
 data = data.dropna()
 
-# Normalize
+# Normalize from the start and use base value of 1000
 normalized = data / data.iloc[0]
 composite = pd.Series(index=normalized.index, dtype=float)
 
-# Weighting
+# Process quarterly weights
 sorted_quarters = sorted((pd.to_datetime(k), v) for k, v in quarterly_weights.items())
 
+# Apply weights for each time period
 for i, (start, weights) in enumerate(sorted_quarters):
     end = sorted_quarters[i + 1][0] if i + 1 < len(sorted_quarters) else normalized.index[-1]
     mask = (normalized.index >= start) & (normalized.index <= end)
     temp_data = normalized.loc[mask, weights.keys()]
     composite.loc[mask] = (temp_data * pd.Series(weights)).sum(axis=1)
 
+# Scale the index to base value 1000
 composite = composite / composite.iloc[0] * 1000
-composite = composite.dropna()
 
-# Create OHLC data for candlestick
-ohlc = composite.resample("1D").ohlc()
+# Plot using Plotly (Line Chart)
+fig = go.Figure()
 
-# Plotly candlestick
-fig = go.Figure(data=[go.Candlestick(
-    x=ohlc.index,
-    open=ohlc["open"],
-    high=ohlc["high"],
-    low=ohlc["low"],
-    close=ohlc["close"],
-    increasing_line_color='green',
-    decreasing_line_color='red'
-)])
+fig.add_trace(go.Scatter(x=composite.index, y=composite, mode='lines', name="Hafzan Composite Index"))
 
 fig.update_layout(
-    title="Hafzan Composite Index (Candlestick Chart)",
+    title="Hafzan Composite Index",
     xaxis_title="Date",
     yaxis_title="Index Value",
-    xaxis_rangeslider_visible=False
+    template="plotly_dark"
 )
 
-# Save to HTML
-fig.write_html("index.html", include_plotlyjs='cdn')
+fig.write_html("index.html")  # Save as HTML for GitHub Pages
