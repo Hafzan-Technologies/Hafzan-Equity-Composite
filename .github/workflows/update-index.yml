@@ -26,12 +26,13 @@ jobs:
         run: |
           python generate_chart.py
 
-      - name: Commit and push changes
+      - name: Commit and push changes to gh-pages
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "GitHub Actions Bot"
+          git checkout -b gh-pages
           git add index.html
           git commit -m "Daily update"
-          git push
+          git push origin gh-pages --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
